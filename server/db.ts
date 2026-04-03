@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, accounts, transactions, accountBalances, accountStatements, Account, Transaction, AccountBalance } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,126 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Accounting App Queries
+
+export async function getAllAccounts(): Promise<Account[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accounts);
+}
+
+export async function getAccountById(id: number): Promise<Account | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllTransactions(limit?: number, offset?: number): Promise<Transaction[]> {
+  const db = await getDb();
+  if (!db) return [];
+  let query: any = db.select().from(transactions).orderBy(desc(transactions.transactionDate));
+  if (limit) query = query.limit(limit);
+  if (offset) query = query.offset(offset);
+  return query;
+}
+
+export async function getTransactionsByAccount(accountId: number, limit?: number, offset?: number): Promise<Transaction[]> {
+  const db = await getDb();
+  if (!db) return [];
+  let query: any = db.select().from(transactions).where(eq(transactions.accountId, accountId)).orderBy(desc(transactions.transactionDate));
+  if (limit) query = query.limit(limit);
+  if (offset) query = query.offset(offset);
+  return query;
+}
+
+export async function getTransactionsByDateRange(startDate: Date, endDate: Date): Promise<Transaction[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(transactions).where(
+    and(
+      gte(transactions.transactionDate, startDate),
+      lte(transactions.transactionDate, endDate)
+    )
+  ).orderBy(desc(transactions.transactionDate));
+}
+
+export async function getAccountBalances(accountId: number): Promise<AccountBalance[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accountBalances).where(eq(accountBalances.accountId, accountId));
+}
+
+export async function getAllAccountBalances(): Promise<(AccountBalance & { account: Account | null })[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const balances = await db.select().from(accountBalances);
+  const result: (AccountBalance & { account: Account | null })[] = [];
+  
+  for (const balance of balances) {
+    const account = await getAccountById(balance.accountId);
+    result.push({
+      ...balance,
+      account: account || null,
+    });
+  }
+  
+  return result;
+}
+
+export async function createTransaction(data: {
+  accountId: number;
+  amount: string;
+  currency: string;
+  description?: string;
+  type: string;
+  transactionDate: Date;
+}): Promise<Transaction> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(transactions).values({
+    accountId: data.accountId,
+    amount: data.amount,
+    currency: data.currency as any,
+    description: data.description,
+    type: data.type as any,
+    transactionDate: data.transactionDate,
+  });
+  
+  const insertedId = result[0].insertId;
+  const inserted = await db.select().from(transactions).where(eq(transactions.id, insertedId as number)).limit(1);
+  return inserted[0];
+}
+
+export async function updateTransaction(id: number, data: Partial<{
+  amount: string;
+  currency: 'دولار' | 'يورو' | 'ليرة سورية' | 'آخر';
+  description: string;
+  type: 'لنا' | 'لهم';
+  transactionDate: Date;
+}>): Promise<Transaction | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const updateData: Record<string, any> = {};
+  if (data.amount !== undefined) updateData.amount = data.amount;
+  if (data.currency !== undefined) updateData.currency = data.currency;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.type !== undefined) updateData.type = data.type;
+  if (data.transactionDate !== undefined) updateData.transactionDate = data.transactionDate;
+  
+  await db.update(transactions).set(updateData).where(eq(transactions.id, id));
+  
+  const result = await db.select().from(transactions).where(eq(transactions.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function deleteTransaction(id: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.delete(transactions).where(eq(transactions.id, id));
+  return true;
+}

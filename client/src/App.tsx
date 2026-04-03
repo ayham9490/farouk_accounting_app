@@ -5,23 +5,42 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Daily from "./pages/Daily";
+import Balances from "./pages/Balances";
+import Statement from "./pages/Statement";
+import AccountingDashboardLayout from "./components/AccountingDashboardLayout";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/daily"}>
+        {() => (
+          <AccountingDashboardLayout>
+            <Daily />
+          </AccountingDashboardLayout>
+        )}
+      </Route>
+      <Route path={"/balances"}>
+        {() => (
+          <AccountingDashboardLayout>
+            <Balances />
+          </AccountingDashboardLayout>
+        )}
+      </Route>
+      <Route path={"/statement"}>
+        {() => (
+          <AccountingDashboardLayout>
+            <Statement />
+          </AccountingDashboardLayout>
+        )}
+      </Route>
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
-
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
   return (
