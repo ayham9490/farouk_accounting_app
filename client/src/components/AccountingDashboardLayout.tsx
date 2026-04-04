@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu, X, Home, BarChart3, FileText, Clipboard } from "lucide-react";
+import { LogOut, Menu, X, Home, BarChart3, FileText, Clipboard, Settings } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 interface AccountingDashboardLayoutProps {
@@ -19,6 +19,7 @@ export default function AccountingDashboardLayout({ children }: AccountingDashbo
     { label: "اليومية", icon: FileText, path: "/daily" },
     { label: "الرصيد النهائي", icon: BarChart3, path: "/balances" },
     { label: "كشف حساب", icon: Clipboard, path: "/statement" },
+    { label: "الإعدادات", icon: Settings, path: "/settings" },
   ];
 
   const handleLogout = async () => {

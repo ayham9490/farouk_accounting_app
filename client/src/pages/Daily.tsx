@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit2 } from "lucide-react";
+import { Plus, Trash2, Edit2, DollarSign, EuroIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Daily() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [isEuroDialogOpen, setIsEuroDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState<string>("");
 
@@ -49,8 +51,58 @@ export default function Daily() {
       currency: formData.get("currency") as any,
       description: formData.get("description") as string,
       type: formData.get("type") as any,
-      transactionDate: new Date(formData.get("transactionDate") as string),
+      transactionDate: new Date(),
     });
+  };
+
+  const handleAddBatchTransaction = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    createMutation.mutate({
+      accountId: parseInt(formData.get("accountId") as string),
+      amount: formData.get("amount") as string,
+      currency: formData.get("currency") as any,
+      description: formData.get("description") as string,
+      type: formData.get("type") as any,
+      transactionDate: new Date(),
+    });
+  };
+
+  const handleEuroExchange = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const euroAmount = parseFloat(formData.get("euroAmount") as string);
+    const exchangeRate = parseFloat(formData.get("exchangeRate") as string);
+    const result = euroAmount * exchangeRate;
+
+    // إضافة معاملتين: طرح اليورو من حسابنا لدى المكتب وإضافة الدولار
+    const officeAccountId = parseInt(formData.get("officeAccountId") as string);
+
+    // معاملة 1: طرح اليورو (لهم)
+    createMutation.mutate({
+      accountId: officeAccountId,
+      amount: euroAmount.toString(),
+      currency: "يورو",
+      description: `قص يورو - ${formData.get("description")}`,
+      type: "لهم",
+      transactionDate: new Date(),
+    });
+
+    // معاملة 2: إضافة الدولار (لنا)
+    setTimeout(() => {
+      createMutation.mutate({
+        accountId: officeAccountId,
+        amount: result.toString(),
+        currency: "دولار",
+        description: `ناتج قص يورو - ${formData.get("description")}`,
+        type: "لنا",
+        transactionDate: new Date(),
+      });
+    }, 500);
+
+    setIsEuroDialogOpen(false);
+    toast.success(`تم معالجة قص اليورو: ${euroAmount} يورو = ${result.toFixed(2)} دولار`);
   };
 
   const filteredTransactions = transactions.filter((tx) => {
@@ -63,74 +115,193 @@ export default function Daily() {
     return matchesSearch && matchesCurrency;
   });
 
+  const officeAccounts = accounts.filter((a) => a.accountType === "مكتب");
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-primary">سجل المعاملات اليومية</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="btn-primary gap-2">
-              <Plus size={20} />
-              إضافة معاملة جديدة
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>إضافة معاملة جديدة</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddTransaction} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">الحساب</label>
-                <select name="accountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">اختر حساباً</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id.toString()}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">المبلغ</label>
-                <Input type="number" name="amount" placeholder="0.00" step="0.01" required />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">العملة</label>
-                <select name="currency" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">اختر عملة</option>
-                  <option value="دولار">دولار</option>
-                  <option value="يورو">يورو</option>
-                  <option value="ليرة سورية">ليرة سورية</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">النوع</label>
-                <select name="type" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">اختر النوع</option>
-                  <option value="لنا">لنا</option>
-                  <option value="لهم">لهم</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">البيان</label>
-                <Input type="text" name="description" placeholder="أدخل البيان" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">التاريخ</label>
-                <Input type="datetime-local" name="transactionDate" required />
-              </div>
-
-              <Button type="submit" className="w-full btn-primary" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "جاري الإضافة..." : "إضافة"}
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="btn-primary gap-2">
+                <Plus size={20} />
+                إضافة معاملة
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>إضافة معاملة جديدة</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddTransaction} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">الحساب</label>
+                  <select name="accountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر حساباً</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id.toString()}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">المبلغ</label>
+                  <Input type="number" name="amount" placeholder="0.00" step="0.01" required />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">العملة</label>
+                  <select name="currency" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر عملة</option>
+                    <option value="دولار">دولار</option>
+                    <option value="يورو">يورو</option>
+                    <option value="ليرة سورية">ليرة سورية</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">النوع</label>
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="type" value="لنا" required />
+                      <span>لنا</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="type" value="لهم" required />
+                      <span>لهم</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">البيان</label>
+                  <Input type="text" name="description" placeholder="أدخل البيان" />
+                </div>
+
+                <Button type="submit" className="w-full btn-primary" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "جاري الإضافة..." : "إضافة"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 text-white hover:bg-blue-700 gap-2">
+                <Plus size={20} />
+                إدخال دفعة
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>إدخال بيانات دفعة</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddBatchTransaction} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">الحساب</label>
+                  <select name="accountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر حساباً</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id.toString()}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">المبلغ</label>
+                  <Input type="number" name="amount" placeholder="0.00" step="0.01" required />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">العملة</label>
+                  <select name="currency" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر عملة</option>
+                    <option value="دولار">دولار</option>
+                    <option value="يورو">يورو</option>
+                    <option value="ليرة سورية">ليرة سورية</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">القيمة</label>
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="type" value="لنا" required />
+                      <span>لنا</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="type" value="لهم" required />
+                      <span>لهم</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">البيان</label>
+                  <Input type="text" name="description" placeholder="أدخل البيان" />
+                </div>
+
+                <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "جاري الإضافة..." : "إضافة"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isEuroDialogOpen} onOpenChange={setIsEuroDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-amber-600 text-white hover:bg-amber-700 gap-2">
+                <EuroIcon size={20} />
+                قص يورو
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>نموذج قص اليورو</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleEuroExchange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">المكتب</label>
+                  <select name="officeAccountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر مكتباً</option>
+                    {officeAccounts.map((account) => (
+                      <option key={account.id} value={account.id.toString()}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">مبلغ اليورو</label>
+                  <Input type="number" name="euroAmount" placeholder="0.00" step="0.01" required />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">سعر القص (دولار/يورو)</label>
+                  <Input type="number" name="exchangeRate" placeholder="1.10" step="0.01" required />
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">الناتج سيتم حسابه تلقائياً</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">ملاحظات</label>
+                  <Input type="text" name="description" placeholder="أدخل ملاحظات إضافية" />
+                </div>
+
+                <Button type="submit" className="w-full bg-amber-600 text-white hover:bg-amber-700" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "جاري المعالجة..." : "معالجة"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters */}

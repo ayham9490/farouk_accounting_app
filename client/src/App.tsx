@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Daily from "./pages/Daily";
 import Balances from "./pages/Balances";
 import Statement from "./pages/Statement";
+import SettingsPage from "./pages/Settings";
 import AccountingDashboardLayout from "./components/AccountingDashboardLayout";
 
 function Router() {
@@ -32,6 +33,13 @@ function Router() {
         {() => (
           <AccountingDashboardLayout>
             <Statement />
+          </AccountingDashboardLayout>
+        )}
+      </Route>
+      <Route path={"/settings"}>
+        {() => (
+          <AccountingDashboardLayout>
+            <SettingsPage />
           </AccountingDashboardLayout>
         )}
       </Route>

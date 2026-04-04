@@ -108,3 +108,54 @@ export const inventory = mysqlTable("inventory", {
 
 export type Inventory = typeof inventory.$inferSelect;
 export type InsertInventory = typeof inventory.$inferInsert;
+
+
+/**
+ * Batch Transactions table - معاملات دفعية
+ */
+export const batchTransactions = mysqlTable("batchTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  currency: mysqlEnum("currency", ["دولار", "يورو", "ليرة سورية", "آخر"]).notNull(),
+  description: text("description"),
+  type: mysqlEnum("type", ["لنا", "لهم"]).notNull(),
+  transactionDate: timestamp("transactionDate").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BatchTransaction = typeof batchTransactions.$inferSelect;
+export type InsertBatchTransaction = typeof batchTransactions.$inferInsert;
+
+/**
+ * Euro Exchange table - قص اليورو
+ */
+export const euroExchanges = mysqlTable("euroExchanges", {
+  id: int("id").autoincrement().primaryKey(),
+  officeId: int("officeId").notNull(),
+  euroAmount: decimal("euroAmount", { precision: 15, scale: 2 }).notNull(),
+  exchangeRate: decimal("exchangeRate", { precision: 15, scale: 4 }).notNull(),
+  dollarAmount: decimal("dollarAmount", { precision: 15, scale: 2 }).notNull(),
+  exchangeDate: timestamp("exchangeDate").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EuroExchange = typeof euroExchanges.$inferSelect;
+export type InsertEuroExchange = typeof euroExchanges.$inferInsert;
+
+/**
+ * Settings table - الإعدادات
+ */
+export const settings = mysqlTable("settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 255 }).notNull().unique(),
+  value: text("value"),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Setting = typeof settings.$inferSelect;
+export type InsertSetting = typeof settings.$inferInsert;

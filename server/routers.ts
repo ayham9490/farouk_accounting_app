@@ -12,6 +12,16 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  createBatchTransaction,
+  createEuroExchange,
+  getAllEuroExchanges,
+  getSetting,
+  setSetting,
+  getAllSettings,
+  createAccount,
+  updateAccount,
+  deleteAccount,
+  getAccountsByType,
 } from "./db";
 
 export const appRouter = router({
@@ -105,6 +115,111 @@ export const appRouter = router({
 
     all: publicProcedure.query(async () => {
       return getAllAccountBalances();
+    }),
+  }),
+
+  // Account Management
+  accountManagement: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string(),
+          accountType: z.enum(["زبون", "مكتب", "مندوب", "آخر"]),
+          description: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return createAccount(input);
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          accountType: z.enum(["زبون", "مكتب", "مندوب", "آخر"]).optional(),
+          description: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return updateAccount(id, data);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return deleteAccount(input.id);
+      }),
+
+    getByType: publicProcedure
+      .input(z.object({ accountType: z.enum(["زبون", "مكتب", "مندوب", "آخر"]) }))
+      .query(async ({ input }) => {
+        return getAccountsByType(input.accountType);
+      }),
+  }),
+
+  // Batch Transactions
+  batchTransactions: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          accountId: z.number(),
+          amount: z.string(),
+          currency: z.enum(["دولار", "يورو", "ليرة سورية", "آخر"]),
+          description: z.string().optional(),
+          type: z.enum(["لنا", "لهم"]),
+          transactionDate: z.date(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return createBatchTransaction(input);
+      }),
+  }),
+
+  // Euro Exchange
+  euroExchange: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          officeId: z.number(),
+          euroAmount: z.string(),
+          exchangeRate: z.string(),
+          dollarAmount: z.string(),
+          exchangeDate: z.date(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return createEuroExchange(input);
+      }),
+
+    list: publicProcedure.query(async () => {
+      return getAllEuroExchanges();
+    }),
+  }),
+
+  // Settings
+  settings: router({
+    get: publicProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        return getSetting(input.key);
+      }),
+
+    set: protectedProcedure
+      .input(
+        z.object({
+          key: z.string(),
+          value: z.string(),
+          description: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return setSetting(input.key, input.value, input.description);
+      }),
+
+    all: publicProcedure.query(async () => {
+      return getAllSettings();
     }),
   }),
 });

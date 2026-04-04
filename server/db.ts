@@ -1,6 +1,6 @@
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, accounts, transactions, accountBalances, accountStatements, Account, Transaction, AccountBalance } from "../drizzle/schema";
+import { InsertUser, users, accounts, transactions, accountBalances, accountStatements, Account, Transaction, AccountBalance, batchTransactions, euroExchanges, settings, BatchTransaction, EuroExchange, Setting } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -211,4 +211,145 @@ export async function deleteTransaction(id: number): Promise<boolean> {
   
   await db.delete(transactions).where(eq(transactions.id, id));
   return true;
+}
+
+// Batch Transactions
+export async function createBatchTransaction(data: {
+  accountId: number;
+  amount: string;
+  currency: string;
+  description?: string;
+  type: string;
+  transactionDate: Date;
+}): Promise<BatchTransaction> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(batchTransactions).values({
+    accountId: data.accountId,
+    amount: data.amount,
+    currency: data.currency as any,
+    description: data.description,
+    type: data.type as any,
+    transactionDate: data.transactionDate,
+  });
+  
+  const insertedId = result[0].insertId;
+  const inserted = await db.select().from(batchTransactions).where(eq(batchTransactions.id, insertedId as number)).limit(1);
+  return inserted[0];
+}
+
+// Euro Exchanges
+export async function createEuroExchange(data: {
+  officeId: number;
+  euroAmount: string;
+  exchangeRate: string;
+  dollarAmount: string;
+  exchangeDate: Date;
+}): Promise<EuroExchange> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(euroExchanges).values({
+    officeId: data.officeId,
+    euroAmount: data.euroAmount,
+    exchangeRate: data.exchangeRate,
+    dollarAmount: data.dollarAmount,
+    exchangeDate: data.exchangeDate,
+  });
+  
+  const insertedId = result[0].insertId;
+  const inserted = await db.select().from(euroExchanges).where(eq(euroExchanges.id, insertedId as number)).limit(1);
+  return inserted[0];
+}
+
+export async function getAllEuroExchanges(): Promise<EuroExchange[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(euroExchanges).orderBy(desc(euroExchanges.exchangeDate));
+}
+
+// Settings
+export async function getSetting(key: string): Promise<Setting | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function setSetting(key: string, value: string, description?: string): Promise<Setting> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getSetting(key);
+  
+  if (existing) {
+    await db.update(settings).set({ value, description }).where(eq(settings.key, key));
+    const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+    return result[0];
+  } else {
+    const result = await db.insert(settings).values({ key, value, description });
+    const insertedId = result[0].insertId;
+    const inserted = await db.select().from(settings).where(eq(settings.id, insertedId as number)).limit(1);
+    return inserted[0];
+  }
+}
+
+export async function getAllSettings(): Promise<Setting[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(settings);
+}
+
+// Account Management
+export async function createAccount(data: {
+  name: string;
+  accountType: 'زبون' | 'مكتب' | 'مندوب' | 'آخر';
+  description?: string;
+}): Promise<Account> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(accounts).values({
+    name: data.name,
+    accountType: data.accountType,
+    description: data.description,
+  });
+  
+  const insertedId = result[0].insertId;
+  const inserted = await db.select().from(accounts).where(eq(accounts.id, insertedId as number)).limit(1);
+  return inserted[0];
+}
+
+export async function updateAccount(id: number, data: Partial<{
+  name: string;
+  accountType: 'زبون' | 'مكتب' | 'مندوب' | 'آخر';
+  description: string;
+}>): Promise<Account | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const updateData: Record<string, any> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.accountType !== undefined) updateData.accountType = data.accountType;
+  if (data.description !== undefined) updateData.description = data.description;
+  
+  await db.update(accounts).set(updateData).where(eq(accounts.id, id));
+  
+  const result = await db.select().from(accounts).where(eq(accounts.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function deleteAccount(id: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.delete(accounts).where(eq(accounts.id, id));
+  return true;
+}
+
+export async function getAccountsByType(accountType: 'زبون' | 'مكتب' | 'مندوب' | 'آخر'): Promise<Account[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accounts).where(eq(accounts.accountType, accountType));
 }
