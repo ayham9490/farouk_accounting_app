@@ -39,9 +39,11 @@ export const appRouter = router({
 
   // Accounting Features
   accounts: router({
-    list: publicProcedure.query(async () => {
-      return getAllAccounts();
-    }),
+    list: publicProcedure
+      .input(z.object({}).optional())
+      .query(async () => {
+        return getAllAccounts();
+      }),
   }),
 
   transactions: router({
@@ -50,10 +52,10 @@ export const appRouter = router({
         z.object({
           limit: z.number().optional(),
           offset: z.number().optional(),
-        })
+        }).optional()
       )
       .query(async ({ input }) => {
-        return getAllTransactions(input.limit, input.offset);
+        return getAllTransactions(input?.limit, input?.offset);
       }),
 
     byAccount: publicProcedure
@@ -62,9 +64,10 @@ export const appRouter = router({
           accountId: z.number(),
           limit: z.number().optional(),
           offset: z.number().optional(),
-        })
+        }).optional()
       )
       .query(async ({ input }) => {
+        if (!input) return [];
         return getTransactionsByAccount(input.accountId, input.limit, input.offset);
       }),
 

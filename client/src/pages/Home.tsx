@@ -13,9 +13,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-primary/90 to-primary/80">
         <div className="text-center max-w-md">
           <div className="mb-8">
-            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-4xl font-bold text-white">ف</span>
-            </div>
+            <img src="/favicon.ico" alt="شاهم للحوالات الدولية" className="w-32 h-32 mx-auto mb-4 rounded-lg shadow-lg" />
             <h1 className="text-5xl font-bold text-white mb-2">الفاروق</h1>
             <p className="text-white/80 text-lg">نظام محاسبة متكامل</p>
           </div>
@@ -35,6 +33,9 @@ export default function Home() {
   return (
     <AccountingDashboardLayout>
       <div className="space-y-8">
+        <div className="flex justify-center mb-8">
+          <img src="/favicon.ico" alt="شاهم للحوالات الدولية" className="w-24 h-24 rounded-lg shadow-lg" />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow p-6 border-r-4 border-primary">
             <h3 className="text-gray-600 text-sm font-medium mb-2">إجمالي المعاملات</h3>

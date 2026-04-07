@@ -110,7 +110,7 @@ export default function AccountingDashboardLayout({ children }: AccountingDashbo
               >
                 {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
-              <h1 className="text-2xl font-bold text-primary">صرافة الفاروق</h1>
+              <h1 className="text-2xl font-bold text-primary">شام للحوالات الدولية</h1>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">

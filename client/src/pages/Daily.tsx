@@ -41,18 +41,41 @@ export default function Daily() {
     },
   });
 
+  // النموذج الجديد: إضافة معاملة يورو مع تكلفة دولار
   const handleAddTransaction = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    const customerAccountId = parseInt(formData.get("customerAccountId") as string);
+    const officeAccountId = parseInt(formData.get("officeAccountId") as string);
+    const euroAmount = formData.get("euroAmount") as string;
+    const dollarCost = formData.get("dollarCost") as string;
+    const description = formData.get("description") as string;
+
+    // معاملة 1: إضافة اليورو للزبون (لنا)
     createMutation.mutate({
-      accountId: parseInt(formData.get("accountId") as string),
-      amount: formData.get("amount") as string,
-      currency: formData.get("currency") as any,
-      description: formData.get("description") as string,
-      type: formData.get("type") as any,
+      accountId: customerAccountId,
+      amount: euroAmount,
+      currency: "يورو",
+      description: description,
+      type: "لنا",
       transactionDate: new Date(),
     });
+
+    // معاملة 2: إضافة التكلفة بالدولار للشركة (لهم)
+    setTimeout(() => {
+      createMutation.mutate({
+        accountId: officeAccountId,
+        amount: dollarCost,
+        currency: "دولار",
+        description: description,
+        type: "لهم",
+        transactionDate: new Date(),
+      });
+    }, 300);
+
+    setIsDialogOpen(false);
+    toast.success("تم إضافة المعاملة بنجاح");
   };
 
   const handleAddBatchTransaction = (e: React.FormEvent<HTMLFormElement>) => {
@@ -115,6 +138,8 @@ export default function Daily() {
     return matchesSearch && matchesCurrency;
   });
 
+  // تصفية الحسابات حسب النوع
+  const customerAccounts = accounts.filter((a) => a.accountType === "زبون");
   const officeAccounts = accounts.filter((a) => a.accountType === "مكتب");
 
   return (
@@ -122,6 +147,7 @@ export default function Daily() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-primary">سجل المعاملات اليومية</h1>
         <div className="flex gap-2">
+          {/* نموذج إضافة معاملة يورو مع تكلفة دولار */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="btn-primary gap-2">
@@ -131,14 +157,14 @@ export default function Daily() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>إضافة معاملة جديدة</DialogTitle>
+                <DialogTitle>إضافة معاملة يورو</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleAddTransaction} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">الحساب</label>
-                  <select name="accountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="">اختر حساباً</option>
-                    {accounts.map((account) => (
+                  <label className="block text-sm font-medium mb-2">الحساب (زبون)</label>
+                  <select name="customerAccountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر حساب زبون</option>
+                    {customerAccounts.map((account) => (
                       <option key={account.id} value={account.id.toString()}>
                         {account.name}
                       </option>
@@ -147,32 +173,25 @@ export default function Daily() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">المبلغ</label>
-                  <Input type="number" name="amount" placeholder="0.00" step="0.01" required />
+                  <label className="block text-sm font-medium mb-2">المبلغ (يورو)</label>
+                  <Input type="number" name="euroAmount" placeholder="0.00" step="0.01" required />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">العملة</label>
-                  <select name="currency" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="">اختر عملة</option>
-                    <option value="دولار">دولار</option>
-                    <option value="يورو">يورو</option>
-                    <option value="ليرة سورية">ليرة سورية</option>
+                  <label className="block text-sm font-medium mb-2">المكتب المرسل</label>
+                  <select name="officeAccountId" required className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="">اختر مكتباً</option>
+                    {officeAccounts.map((account) => (
+                      <option key={account.id} value={account.id.toString()}>
+                        {account.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">النوع</label>
-                  <div className="flex gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="type" value="لنا" required />
-                      <span>لنا</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="type" value="لهم" required />
-                      <span>لهم</span>
-                    </label>
-                  </div>
+                  <label className="block text-sm font-medium mb-2">التكلفة (دولار)</label>
+                  <Input type="number" name="dollarCost" placeholder="0.00" step="0.01" required />
                 </div>
 
                 <div>
@@ -304,18 +323,19 @@ export default function Daily() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
+      {/* Search and Filter */}
+      <div className="flex gap-4">
         <Input
-          placeholder="ابحث عن حساب أو بيان..."
+          type="text"
+          placeholder="ابحث عن معاملة..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 min-w-64"
+          className="flex-1"
         />
         <select
           value={selectedCurrency}
           onChange={(e) => setSelectedCurrency(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg w-40"
+          className="px-3 py-2 border border-gray-300 rounded-lg"
         >
           <option value="">جميع العملات</option>
           <option value="دولار">دولار</option>
@@ -326,69 +346,54 @@ export default function Daily() {
 
       {/* Transactions Table */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="table-header">
-                <th className="px-6 py-3 text-right">الحساب</th>
-                <th className="px-6 py-3 text-right">المبلغ</th>
-                <th className="px-6 py-3 text-right">العملة</th>
-                <th className="px-6 py-3 text-right">النوع</th>
-                <th className="px-6 py-3 text-right">البيان</th>
-                <th className="px-6 py-3 text-right">التاريخ</th>
-                <th className="px-6 py-3 text-right">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
+        {isLoading ? (
+          <div className="p-8 text-center text-gray-500">جاري التحميل...</div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">لا توجد معاملات</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-primary text-white">
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    جاري التحميل...
-                  </td>
+                  <th className="px-4 py-3 text-right">التاريخ</th>
+                  <th className="px-4 py-3 text-right">الحساب</th>
+                  <th className="px-4 py-3 text-right">البيان</th>
+                  <th className="px-4 py-3 text-right">المبلغ</th>
+                  <th className="px-4 py-3 text-right">العملة</th>
+                  <th className="px-4 py-3 text-right">النوع</th>
+                  <th className="px-4 py-3 text-right">الإجراءات</th>
                 </tr>
-              ) : filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    لا توجد معاملات
-                  </td>
-                </tr>
-              ) : (
-                filteredTransactions.map((tx, idx) => {
+              </thead>
+              <tbody>
+                {filteredTransactions.map((tx, index) => {
                   const account = accounts.find((a) => a.id === tx.accountId);
                   return (
-                    <tr key={tx.id} className={idx % 2 === 0 ? "bg-gray-50" : ""}>
-                      <td className="px-6 py-4 font-medium">{account?.name}</td>
-                      <td className="px-6 py-4">{parseFloat(tx.amount).toFixed(2)}</td>
-                      <td className="px-6 py-4">{tx.currency}</td>
-                      <td className="px-6 py-4">
-                        <span className={tx.type === "لنا" ? "badge-success" : "badge-danger"}>
+                    <tr key={tx.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="px-4 py-3 text-sm">{new Date(tx.transactionDate).toLocaleDateString("ar-SA")}</td>
+                      <td className="px-4 py-3 text-sm">{account?.name || "غير معروف"}</td>
+                      <td className="px-4 py-3 text-sm">{tx.description}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{tx.amount}</td>
+                      <td className="px-4 py-3 text-sm">{tx.currency}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={tx.type === "لنا" ? "text-success" : "text-danger"}>
                           {tx.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{tx.description}</td>
-                      <td className="px-6 py-4 text-sm">
-                        {new Date(tx.transactionDate).toLocaleDateString("ar-SA")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button className="p-2 hover:bg-gray-200 rounded">
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => deleteMutation.mutate({ id: tx.id })}
-                            className="p-2 hover:bg-red-100 rounded text-red-600"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                      <td className="px-4 py-3 text-sm">
+                        <button
+                          onClick={() => deleteMutation.mutate({ id: tx.id })}
+                          className="text-danger hover:text-danger/80"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
